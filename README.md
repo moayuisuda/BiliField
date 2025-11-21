@@ -1,5 +1,5 @@
 # 🌸 Bili Field
-Bilibili Feed & Reply Filter
+健康冲浪过滤器 —— Bilibili Feed & Reply Filter
 
 通过复写 `fetch` 实现，过滤哔哩哔哩首页推荐和评论区中包含指定关键词的内容。规则可在扩展弹窗中配置，多条关键词使用逗号（`,` / `，`）分隔。
 
@@ -49,12 +49,6 @@ src/popup/
 scripts/copy-static.js     # 拷贝 manifest、content、icons 到 dist
 ```
 
-## 图标资源
-
-- 设计稿位于 `extension/icons/image.png`，原始尺寸保持了设计细节。
-- 运行 `python3 scripts/generate_icons.py` 会调用 Pillow 将原图缩放为 `icon-16.png`、`icon-32.png`、`icon-48.png`、`icon-64.png`、`icon-128.png`、`icon-256.png`，以满足 Chrome manifest 的需求。
-- 若系统未安装 Pillow，可先执行 `python3 -m pip install --user pillow`。
-
 # 贡献
 
 ## 贡献本身插件代码
@@ -62,7 +56,7 @@ scripts/copy-static.js     # 拷贝 manifest、content、icons 到 dist
 ## 贡献更多的屏蔽词预设
 
 可参考 db.json 中已有的预设，新增 id，补充对应屏蔽词
-你新增的 id 将会自动转为一个接口 https://my-json-server.typicode.com/ahhcr68-ux/thin-json-db/presets/<id>
+你新增的 id 将会自动转为一个接口 https://my-json-server.typicode.com/moayuisuda/BiliField/presets/[id]
 
 ## TODO
 

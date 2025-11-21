@@ -8,7 +8,7 @@ const DEFAULT_CONFIG = {
   replyKeywords: [] as string[],
 };
 const DEFAULT_IMPORT_URL =
-  "https://my-json-server.typicode.com/ahhcr68-ux/thin-json-db/presets/default";
+  "https://my-json-server.typicode.com/moayuisuda/BiliField/presets/default";
 
 function parseInput(value: string): string[] {
   return value

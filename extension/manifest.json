@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Bili Field",
+  "description": "通过改写 fetch 过滤首页推荐与评论内容，可自定义关键词规则。",
+  "version": "0.1.0",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://www.bilibili.com/*",
+    "https://api.bilibili.com/*",
+    "http://my-json-server.typicode.com/*",
+    "https://my-json-server.typicode.com/*"
+  ],
+  "icons": {},
+  "content_scripts": [
+    {
+      "matches": ["https://www.bilibili.com/*"],
+      "js": ["content/content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["content/inject.js"],
+      "matches": ["https://www.bilibili.com/*"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {}
+  }
+}

@@ -347,11 +347,11 @@ const App = () => {
               writeSettings({ autoUpdate: next });
             }}
           />
-          <span>每日首次自动更新</span>
+          <span>每日自动更新</span>
+          <span style={{ fontSize: 12, color: "#666" }}>
+            Latest：{lastUpdateAt || "尚未更新"}
+          </span>
         </label>
-      </div>
-      <div style={{ fontSize: 12, color: "#666", marginTop: 6 }}>
-        最后更新时间：{lastUpdateAt || "尚未更新"}
       </div>
     </main>
   );

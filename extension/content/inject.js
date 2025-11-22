@@ -19,8 +19,8 @@
 
   function includesKeyword(text, keywords) {
     if (!text || !keywords.length) return false;
-    const lower = text.toLowerCase();
-    return keywords.some((keyword) => lower.includes(keyword.toLowerCase()));
+    const t = String(text);
+    return keywords.some((keyword) => t.includes(keyword));
   }
 
   function extractTitle(item) {

@@ -54,12 +54,10 @@ scripts/copy-static.js     # 拷贝 manifest、content、icons 到 dist
 ## 贡献本身插件代码
 
 ## 贡献更多的屏蔽词预设
-
-可参考 db.json 中已有的预设，新增 id，补充对应屏蔽词
-你新增的 id 将会自动转为一个接口 https://my-json-server.typicode.com/moayuisuda/BiliField/presets/[id]
+https://github.com/ahhcr68-ux/thin-json-db
 
 ## TODO
 
 - 增加导入/导出规则的能力。
-- 支持更多端点（例如直播、动态等）可选过滤。
+- 支持更多端点（例如直播、动态、垃圾信息账号等）可选过滤。
 - 细化命中日志，方便调试规则。

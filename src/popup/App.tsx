@@ -1,14 +1,23 @@
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import constants from "../../extension/content/constants";
+
+type Settings = {
+  importUrl: string;
+  autoUpdate: boolean;
+  lastUpdateAt: string;
+  lastUpdateDay: string;
+};
+
+const CONFIG_STORAGE_KEY = constants.CONFIG_STORAGE_KEY;
+const SETTINGS_STORAGE_KEY = constants.SETTINGS_STORAGE_KEY;
+const DEFAULT_CONFIG = constants.DEFAULT_CONFIG as {
+  feedKeywords: string[];
+  replyKeywords: string[];
+};
+const DEFAULT_SETTINGS = constants.DEFAULT_SETTINGS as Settings;
+const DEFAULT_IMPORT_URL = constants.DEFAULT_IMPORT_URL as string;
 
 import "./styles.css";
-
-const CONFIG_STORAGE_KEY = "biliFieldRules";
-const DEFAULT_CONFIG = {
-  feedKeywords: [] as string[],
-  replyKeywords: [] as string[],
-};
-const DEFAULT_IMPORT_URL =
-  "https://my-json-server.typicode.com/moayuisuda/BiliField/presets/default";
 
 function parseInput(value: string): string[] {
   return value
@@ -46,11 +55,38 @@ function safeGetConfig(
   };
 }
 
+function safeGetSettings(items: Record<string, unknown>) {
+  const raw = items[SETTINGS_STORAGE_KEY];
+  if (!raw || typeof raw !== "object") {
+    return DEFAULT_SETTINGS;
+  }
+  const obj = raw as Settings;
+  return {
+    importUrl:
+      typeof obj.importUrl === "string" && obj.importUrl.trim()
+        ? obj.importUrl.trim()
+        : DEFAULT_SETTINGS.importUrl,
+    autoUpdate:
+      typeof obj.autoUpdate === "boolean"
+        ? obj.autoUpdate
+        : DEFAULT_SETTINGS.autoUpdate,
+    lastUpdateAt: typeof obj.lastUpdateAt === "string" ? obj.lastUpdateAt : "",
+    lastUpdateDay:
+      typeof obj.lastUpdateDay === "string" ? obj.lastUpdateDay : "",
+  };
+}
+
 const App = () => {
   const [feedValue, setFeedValue] = useState("");
   const [replyValue, setReplyValue] = useState("");
 
   const [importUrl, setImportUrl] = useState(DEFAULT_IMPORT_URL);
+  const [autoUpdate, setAutoUpdate] = useState<boolean>(
+    DEFAULT_SETTINGS.autoUpdate
+  );
+  const [lastUpdateAt, setLastUpdateAt] = useState<string>(
+    DEFAULT_SETTINGS.lastUpdateAt
+  );
 
   const [statusText, setStatusText] = useState("");
   const [statusIsError, setStatusIsError] = useState(false);
@@ -58,37 +94,106 @@ const App = () => {
 
   const statusTimer = useRef<number>(null);
 
-  const updateStatus = useCallback(
-    (text: string, isError = false, autoClearMs?: number) => {
-      setStatusText(text);
-      setStatusIsError(isError);
-      if (statusTimer.current) {
-        window.clearTimeout(statusTimer.current);
+  const updateStatus = (
+    text: string,
+    isError = false,
+    autoClearMs?: number
+  ) => {
+    setStatusText(text);
+    setStatusIsError(isError);
+    if (statusTimer.current) {
+      window.clearTimeout(statusTimer.current);
+      statusTimer.current = null;
+    }
+    if (autoClearMs) {
+      statusTimer.current = window.setTimeout(() => {
+        setStatusText("");
+        setStatusIsError(false);
         statusTimer.current = null;
-      }
-      if (autoClearMs) {
-        statusTimer.current = window.setTimeout(() => {
-          setStatusText("");
-          setStatusIsError(false);
-          statusTimer.current = null;
-        }, autoClearMs);
-      }
-    },
-    []
-  );
+      }, autoClearMs);
+    }
+  };
+
+  const applyConfigToUI = (config: {
+    feedKeywords: string[];
+    replyKeywords: string[];
+  }) => {
+    setFeedValue((config.feedKeywords || []).join(", "));
+    setReplyValue((config.replyKeywords || []).join(", "));
+  };
+
+  const applySettingsToUI = (settings: Settings) => {
+    setImportUrl(settings.importUrl || DEFAULT_SETTINGS.importUrl);
+    setAutoUpdate(Boolean(settings.autoUpdate));
+    setLastUpdateAt(settings.lastUpdateAt || "");
+  };
+
+  const writeSettings = (partial: Partial<Settings>) => {
+    const storage = window.chrome?.storage?.sync;
+    if (!storage) return;
+    const next = {
+      importUrl: (partial.importUrl ?? importUrl).trim(),
+      autoUpdate: partial.autoUpdate ?? autoUpdate,
+      lastUpdateAt: partial.lastUpdateAt ?? lastUpdateAt,
+      lastUpdateDay: partial.lastUpdateDay ?? "",
+    };
+    storage.set({ [SETTINGS_STORAGE_KEY]: next });
+  };
 
   useEffect(() => {
     const storage = window.chrome?.storage?.sync;
     if (!storage) {
       setFeedValue(DEFAULT_CONFIG.feedKeywords.join(", "));
       setReplyValue(DEFAULT_CONFIG.replyKeywords.join(", "));
+      setImportUrl(DEFAULT_SETTINGS.importUrl);
+      setAutoUpdate(DEFAULT_SETTINGS.autoUpdate);
       return;
     }
-    storage.get(CONFIG_STORAGE_KEY, (items) => {
-      const config = safeGetConfig(items);
-      setFeedValue(config.feedKeywords.join(", "));
-      setReplyValue(config.replyKeywords.join(", "));
+    storage.get([CONFIG_STORAGE_KEY, SETTINGS_STORAGE_KEY], (items) => {
+      const config = safeGetConfig(items as any);
+      const settings = safeGetSettings(items as any);
+      applyConfigToUI(config);
+      applySettingsToUI(settings);
     });
+  }, []);
+
+  useEffect(() => {
+    const storage = window.chrome?.storage;
+    if (!storage?.onChanged) return;
+    const handler = (
+      changes: Record<string, { newValue?: unknown }>,
+      area: string
+    ) => {
+      if (area !== "sync") return;
+      const rulesChange = changes[CONFIG_STORAGE_KEY];
+      const settingsChange = changes[SETTINGS_STORAGE_KEY];
+      if (
+        rulesChange &&
+        rulesChange.newValue &&
+        typeof rulesChange.newValue === "object"
+      ) {
+        const cfg = safeGetConfig({
+          [CONFIG_STORAGE_KEY]: rulesChange.newValue,
+        } as any);
+        applyConfigToUI(cfg);
+      }
+      if (
+        settingsChange &&
+        settingsChange.newValue &&
+        typeof settingsChange.newValue === "object"
+      ) {
+        const s = safeGetSettings({
+          [SETTINGS_STORAGE_KEY]: settingsChange.newValue,
+        } as any);
+        applySettingsToUI(s);
+      }
+    };
+    storage.onChanged.addListener(handler);
+    return () => {
+      try {
+        storage.onChanged.removeListener(handler);
+      } catch {}
+    };
   }, []);
 
   useEffect(() => {
@@ -110,14 +215,19 @@ const App = () => {
       updateStatus("浏览器 storage 不可用，无法保存", true);
       return;
     }
-    storage.set({ [CONFIG_STORAGE_KEY]: payload }, () => {
-      const lastError = window.chrome?.runtime?.lastError;
-      if (lastError) {
-        updateStatus(`保存失败：${lastError.message}`, true);
-      } else {
-        updateStatus("已保存 ✔，刷新后生效", false, 2000);
+    storage.set(
+      {
+        [CONFIG_STORAGE_KEY]: payload,
+      },
+      () => {
+        const lastError = window.chrome?.runtime?.lastError;
+        if (lastError) {
+          updateStatus(`保存失败：${lastError.message}`, true);
+        } else {
+          updateStatus("已保存 ✔，新请求生效", false, 2000);
+        }
       }
-    });
+    );
   };
 
   const handleImport = async () => {
@@ -213,7 +323,11 @@ const App = () => {
           id="import-url"
           placeholder="接口地址（可选，留空使用默认）"
           value={importUrl}
-          onChange={(event) => setImportUrl(event.target.value)}
+          onChange={(event) => {
+            const next = event.target.value;
+            setImportUrl(next);
+            writeSettings({ importUrl: next });
+          }}
         />
         <button
           type="button"
@@ -223,6 +337,21 @@ const App = () => {
         >
           {isImporting ? "正在下载…" : "下载规则"}
         </button>
+        <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input
+            type="checkbox"
+            checked={autoUpdate}
+            onChange={(event) => {
+              const next = event.target.checked;
+              setAutoUpdate(next);
+              writeSettings({ autoUpdate: next });
+            }}
+          />
+          <span>每日首次自动更新</span>
+        </label>
+      </div>
+      <div style={{ fontSize: 12, color: "#666", marginTop: 6 }}>
+        最后更新时间：{lastUpdateAt || "尚未更新"}
       </div>
     </main>
   );

@@ -140,6 +140,46 @@ const App = () => {
     storage.set({ [SETTINGS_STORAGE_KEY]: next });
   };
 
+  const [hasNewVersion, setHasNewVersion] = useState(false);
+  const [remoteVersion, setRemoteVersion] = useState("");
+
+  useEffect(() => {
+    const checkVersion = async () => {
+      try {
+        const response = await fetch(
+          "https://my-json-server.typicode.com/ahhcr68-ux/thin-json-db/presets/version"
+        );
+        if (!response.ok) return;
+        const data = (await response.json()) as { latest: string };
+        if (data && data.latest) {
+          const current = __APP_VERSION__;
+          const latest = data.latest;
+          
+          const compareVersions = (v1: string, v2: string) => {
+            const parts1 = v1.split('.').map(Number);
+            const parts2 = v2.split('.').map(Number);
+            const len = Math.max(parts1.length, parts2.length);
+            for (let i = 0; i < len; i++) {
+              const num1 = parts1[i] || 0;
+              const num2 = parts2[i] || 0;
+              if (num1 > num2) return 1;
+              if (num1 < num2) return -1;
+            }
+            return 0;
+          };
+
+          if (compareVersions(latest, current) > 0) {
+            setHasNewVersion(true);
+            setRemoteVersion(latest);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to check version", e);
+      }
+    };
+    checkVersion();
+  }, []);
+
   useEffect(() => {
     const storage = window.chrome?.storage?.sync;
     if (!storage) {
@@ -347,12 +387,37 @@ const App = () => {
               writeSettings({ autoUpdate: next });
             }}
           />
-          <span>每日自动更新</span>
+          <span>自动更新</span>
           <span style={{ fontSize: 12, color: "#666" }}>
             Latest：{lastUpdateAt || "尚未更新"}
           </span>
         </label>
       </div>
+      {hasNewVersion && (
+        <div
+          className="version-notice"
+          style={{
+            marginTop: 12,
+            padding: 8,
+            background: "#f0f9ff",
+            borderRadius: 4,
+            fontSize: 13,
+            textAlign: "center",
+          }}
+        >
+          <p style={{ margin: 0, color: "#0369a1" }}>
+            发现新版本 v{remoteVersion} (当前 v{__APP_VERSION__})
+            <a
+              href="https://github.com/ahhcr68-ux/bili-field/releases"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ marginLeft: 8, color: "#0284c7", fontWeight: "bold" }}
+            >
+              去更新
+            </a>
+          </p>
+        </div>
+      )}
     </main>
   );
 };
